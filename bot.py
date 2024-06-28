@@ -119,9 +119,10 @@ async def on_message(message):
 
     user_message_counts[user_id]["xp"] += random.randint(5, 15)
 
-    # Calculate the user's level
-    xp = user_message_counts[user_id]
-    levelf =  0.3 * math.sqrt(xp)
+
+    #  Calculate the user's level
+    xp = user_message_counts[user_id]["xp"]  # Fix: extract the "xp" value from the dictionary
+    levelf = 0.3 * math.sqrt(xp)
     level = int(levelf)
 
     # Define the roles and their corresponding levels
@@ -171,23 +172,25 @@ emoji_map = {
     10: "<:dziesi:1219277713525964860>"
 }
 
-@bot.command(description="Lets you see your level") 
-async def level(ctx): 
+@bot.command(description="Lets you see your level")
+async def level(ctx):
     user_id = ctx.author.id
-    xp = user_message_counts.get(user_id, 0)
-    levelf = 0.3 * math.sqrt (xp)
+    user_data = user_message_counts.get(user_id, {"username": ctx.author.name, "xp": 0})
+    xp = user_data["xp"]
+    levelf = 0.3 * math.sqrt(xp)
     level = int(levelf)
     prcntf = (levelf - level) * 1000
     prcnt = (int(prcntf)) / 10
     fullbarsf = prcnt / 10
     fullbars = int(fullbarsf)
     bars = "<:dziesi:1219277713525964860>" * fullbars
-    semibarf = prcnt - (fullbars*10)
+    semibarf = prcnt - (fullbars * 10)
     semibar = int(semibarf)
     selected_emoji = emoji_map[semibar]
-    emptybarsno = 10 - fullbars -1
+    emptybarsno = 10 - fullbars - 1
     emptybars = "<:zero:1219277173014270052>" * int(emptybarsno)
-    await ctx.respond(f"You have {xp} xp \n That is level {level}! \n thats {prcnt}% of the way there to the next level\n{bars + selected_emoji + emptybars}")
+    await ctx.respond(f"You have {xp} xp\nThat is level {level}!\nThat's {prcnt}% of the way there to the next level\n{bars + selected_emoji + emptybars}")
+
 
 # @bot.command(description="Counts the total number of messages sent by a user across all channels in the server.")
 # async def count_all_messages(ctx, user: discord.Member):
@@ -279,12 +282,13 @@ async def ship(ctx, user1: discord.Member, user2: discord.Member):
 
 
 
-@bot.command(description="check leaderboard")
+@bot.command(description="Check leaderboard")
 async def top(ctx):
-    sorted_users = sorted(user_message_counts.items(), key=lambda item: item[1], reverse=True)
+    sorted_users = sorted(user_message_counts.items(), key=lambda item: item[1]["xp"], reverse=True)
     top_ten_users = sorted_users[:10]
-    top_ten_strings = [f"{index+1}. <@{user}>: {int(0.3 * math.sqrt (score))}" for index, (user, score) in enumerate(top_ten_users)]
-    await ctx.respond("\n".join(top_ten_strings), allowed_mentions=AllowedMentions.none() )
+    top_ten_strings = [f"{index+1}. <@{user}>: **Level:** {int(0.3 * math.sqrt(data['xp']))}, **XP:** {data['xp']}" for index, (user, data) in enumerate(top_ten_users)]
+    await ctx.respond("\n".join(top_ten_strings), allowed_mentions=AllowedMentions.none())
+
 
 @bot.command(description="Check position around the sender")
 async def closest(ctx):
@@ -308,7 +312,6 @@ async def closest(ctx):
             await ctx.respond("You have no recorded messages.")
     else:
         await ctx.respond("You have no recorded messages.")
-
 
 bot.run(PHOTOBOT_KEY)
 
