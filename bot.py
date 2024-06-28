@@ -12,7 +12,6 @@ from PIL import Image, ImageDraw, ImageFont
 import aiohttp
 import requests
 import signal
-import aiosignal
 import sys
 
 def listen_for_console_input():
@@ -66,8 +65,23 @@ bot = discord.Bot()
 def save_xp_to_file(user_message_counts):
     script_dir = os.path.dirname(os.path.realpath(__file__))
     file_path = os.path.join(script_dir, 'xp_values.json')
+    
+    # Load existing data
+    try:
+        with open(file_path, 'r') as file:
+            existing_data = json.load(file)
+    except (FileNotFoundError, json.JSONDecodeError):
+        existing_data = {}
+    
+    # Merge existing data with new data
+    for user_id, data in user_message_counts.items():
+        if user_id in existing_data:
+            existing_data[user_id]['xp'] += data['xp']
+        else:
+            existing_data[user_id] = data
+    
     with open(file_path, 'w') as file:
-        json.dump(user_message_counts, file, indent=4)
+        json.dump(existing_data, file, indent=4)
 
 def load_xp_from_file():
     script_dir = os.path.dirname(os.path.realpath(__file__))
@@ -80,7 +94,6 @@ def load_xp_from_file():
         pass  # File doesn't exist yet, which is fine
     return user_message_counts
 ###--- END XP management ---###
-
 
 ###--- 8Ball ---###
 import requests
@@ -112,7 +125,7 @@ async def on_ready():
         await bot.wait_until_ready()
         while not bot.is_closed():
             save_xp_to_file(user_message_counts)
-            await asyncio.sleep(300)  # Save every 5 minutes
+            await asyncio.sleep(30)  # Save every 5 minutes
 
     bot.loop.create_task(save_xp_periodically())
 
@@ -184,6 +197,8 @@ emoji_map = {
 
 @bot.command(description="Lets you see your level")
 async def level(ctx):
+    save_xp_to_file(user_message_counts) #updates the level
+
     user_id = ctx.author.id
     user_data = user_message_counts.get(user_id, {"username": ctx.author.name, "xp": 0})
     xp = user_data["xp"]
@@ -294,6 +309,8 @@ async def ship(ctx, user1: discord.Member, user2: discord.Member):
 
 @bot.command(description="Check leaderboard")
 async def top(ctx):
+    save_xp_to_file(user_message_counts) #updates the leaderboard
+
     sorted_users = sorted(user_message_counts.items(), key=lambda item: item[1]["xp"], reverse=True)
     top_ten_users = sorted_users[:10]
     top_ten_strings = [f"{index+1}. <@{user}>: **Level:** {int(0.3 * math.sqrt(data['xp']))}, **XP:** {data['xp']}" for index, (user, data) in enumerate(top_ten_users)]
@@ -302,6 +319,8 @@ async def top(ctx):
 
 @bot.command(description="Check position around the sender")
 async def closest(ctx):
+    save_xp_to_file(user_message_counts) #updates the leaderboard
+
     user_id = str(ctx.author.id)
     user_data = user_message_counts.get(user_id, {"username": ctx.author.name, "xp": 0})
 
