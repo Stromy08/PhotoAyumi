@@ -11,6 +11,9 @@ import json
 from PIL import Image, ImageDraw, ImageFont
 import aiohttp
 import requests
+import signal
+import aiosignal
+import sys
 
 def listen_for_console_input():
     while True:
@@ -78,6 +81,7 @@ def load_xp_from_file():
     return user_message_counts
 ###--- END XP management ---###
 
+
 ###--- 8Ball ---###
 import requests
 
@@ -96,13 +100,19 @@ def get_8ball_answer(question, lucky=False):
 
 @bot.event
 async def on_ready():
+    global user_message_counts
     print(f"Logged in as {bot.user}")
+    
+    # Load XP data
+    user_message_counts = load_xp_from_file()
+    
     await bot.change_presence(status=discord.Status.idle, activity=discord.Game("Photography Simulator"))
+
     async def save_xp_periodically():
         await bot.wait_until_ready()
         while not bot.is_closed():
             save_xp_to_file(user_message_counts)
-            await asyncio.sleep(200)  # Wait for  5 minutes
+            await asyncio.sleep(300)  # Save every 5 minutes
 
     bot.loop.create_task(save_xp_periodically())
 
@@ -312,6 +322,16 @@ async def closest(ctx):
             await ctx.respond("You have no recorded messages.")
     else:
         await ctx.respond("You have no recorded messages.")
+
+# Handle shutdown signals to save XP data
+def signal_handler(sig, frame):
+    print("Saving XP data...")
+    save_xp_to_file(user_message_counts)
+    print("XP data saved.")
+    sys.exit(0)
+
+signal.signal(signal.SIGINT, signal_handler)
+signal.signal(signal.SIGTERM, signal_handler)
 
 bot.run(PHOTOBOT_KEY)
 
