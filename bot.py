@@ -62,20 +62,17 @@ bot = discord.Bot()
 ###--- XP management ---###
 def save_xp_to_file(user_message_counts):
     script_dir = os.path.dirname(os.path.realpath(__file__))
-    file_path = os.path.join(script_dir, 'xp_values.txt')
+    file_path = os.path.join(script_dir, 'xp_values.json')
     with open(file_path, 'w') as file:
-        for user_id, xp in user_message_counts.items():
-            file.write(f"{user_id}:{xp}\n")
+        json.dump(user_message_counts, file, indent=4)
 
 def load_xp_from_file():
     script_dir = os.path.dirname(os.path.realpath(__file__))
-    file_path = os.path.join(script_dir, 'xp_values.txt')
+    file_path = os.path.join(script_dir, 'xp_values.json')
     user_message_counts = {}
     try:
         with open(file_path, 'r') as file:
-            for line in file:
-                user_id, xp = line.strip().split(':')
-                user_message_counts[int(user_id)] = int(xp)
+            user_message_counts = json.load(file)
     except FileNotFoundError:
         pass  # File doesn't exist yet, which is fine
     return user_message_counts
@@ -117,7 +114,10 @@ async def on_message(message):
 
     user_id = message.author.id
     user_name = message.author.name
-    user_message_counts[user_id] = user_message_counts.get(user_id,  0) + random.randint(5,  15)
+    if user_id not in user_message_counts:
+        user_message_counts[user_id] = {"username": user_name, "xp": 0}
+
+    user_message_counts[user_id]["xp"] += random.randint(5, 15)
 
     # Calculate the user's level
     xp = user_message_counts[user_id]
