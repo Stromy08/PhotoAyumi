@@ -288,34 +288,27 @@ async def top(ctx):
 
 @bot.command(description="Check position around the sender")
 async def closest(ctx):
-    user_id = str(ctx.author.id)  # Convert to string to ensure consistent type
+    user_id = str(ctx.author.id)
+    user_data = user_message_counts.get(user_id, {"username": ctx.author.name, "xp": 0})
 
-    user_message_counts = load_xp_from_file()
-    normalized_user_message_counts = {str(k): v for k, v in user_message_counts.items()}
+    if user_data["xp"] > 0:
+        sorted_users = sorted(user_message_counts.items(), key=lambda item: item[1]["xp"], reverse=True)
+        user_index = next((index for index, (uid, _) in enumerate(sorted_users) if uid == user_id), -1)
 
-    if user_id in normalized_user_message_counts:
-        user_score = normalized_user_message_counts[user_id]
-        sorted_users = sorted(normalized_user_message_counts.items(), key=lambda item: item[1], reverse=True)
+        if user_index > -1:
+            above_users = sorted_users[max(0, user_index - 5):user_index]
+            below_users = sorted_users[user_index + 1:user_index + 6]
 
-        user_index = sorted_users.index((user_id, user_score))
+            above_text = "\n".join([f"{index+1}. <@{user_id}>: {data['xp']} (Username: {data['username']})" for index, (user_id, data) in enumerate(above_users)])
+            below_text = "\n".join([f"{user_index+index+2}. <@{user_id}>: {data['xp']} (Username: {data['username']})" for index, (user_id, data) in enumerate(below_users)])
+            current_user_text = f"{user_index+1}. <@{user_id}>: {user_data['xp']} (Username: {user_data['username']})"
 
-        if user_index > 4:
-            above_users = sorted_users[user_index - 5:user_index]
+            await ctx.respond(content=f"{above_text}\n\n{current_user_text}\n\n{below_text}", allowed_mentions=AllowedMentions.none())
         else:
-            above_users = sorted_users[max(0, user_index - 5):]
-
-        below_users = sorted_users[user_index + 1:min(user_index + 6, len(sorted_users))]
-
-        # Correctly calculate positions for above and below users
-        above_positions = [user_index - i - 5 for i in range(len(above_users))]
-        below_positions = [user_index + i + 1 for i in range(len(below_users))]
-
-        above_text = "\n".join([f"{pos+1}. <@{user[0]}>: {user[1]}" for pos, user in zip(above_positions, above_users)])
-        below_text = "\n".join([f"{pos+1}. <@{user[0]}>: {user[1]}" for pos, user in zip(below_positions, below_users)])
-
-        await ctx.respond(content=f"{above_text}\n\n{user_index+1}. <@{user_id}>: {user_score}\n\n{below_text}", allowed_mentions=AllowedMentions.none())
+            await ctx.respond("You have no recorded messages.")
     else:
-        await ctx.respond(f"No data found for your ID.")
+        await ctx.respond("You have no recorded messages.")
+
 
 bot.run(PHOTOBOT_KEY)
 
